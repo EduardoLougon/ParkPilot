@@ -1,215 +1,72 @@
-# ParkPilot 🚗🅿️
+# ParkingPilot SD
 
-**ParkPilot** is a smart parking finder web application that predicts the availability of metered street parking and parking facilities across San Diego using the City of San Diego's open municipal dataset.
+ParkingPilot SD helps you decide which San Diego street to try first when you need to park. Tell it where you're headed, when you'll arrive, and how long you plan to stay. The map shows nearby meters so you can weigh the chance of finding a space against the walk to your destination.
 
-By analyzing millions of historical parking meter transactions, ParkPilot transforms raw civic data into real-time, empirical availability predictions—helping drivers quickly find available spots, cut down cruising time, and reduce urban traffic congestion.
+## Try a parking search
 
----
+Imagine you're meeting a friend for lunch in Little Italy. Type **“Find parking near Piazza Basilone on Tuesday at 1 pm for two hours”** in the chat, or drop a pin on the map. The parking list shows the estimated walk and, where available, the meter rate and time limit. If the closest meter looks busy, you can check whether walking another block gives you better odds. Change your destination in chat and the pin and list move together.
 
-## 🌟 Key Features
+The colors on the map and in the list use the same scale.
 
-- **Data-Driven Availability Predictions**: Uses historical transaction patterns from `data.sandiego.gov` discretized into 15-minute buckets with recency weighting (8-week half-life) to estimate spot availability bands (`likely`, `possible`, `unlikely`).
-- **Interactive Map Experience**: Leaflet-based map with color-coded availability pins, meter details (rates, max durations, street limits), and route walking time estimates.
-- **Conversational AI Parking Assistant**: Chat interface powered by Google Gemini with tool calling (`find_parking`, `geocode`), allowing natural language queries like *"Find me a spot near Petco Park for 2 hours tonight"*.
-- **Flexible Arrival & Policy Awareness**: Search for current availability or future dates/times (with Day-of-Week profiles and holiday awareness). Automatically detects free/unenforced off-hours and warns if requested parking duration exceeds posted limits.
-- **Facility & Destination Discovery**: Integrated place geocoding and off-street parking facility lookup via OpenStreetMap / Nominatim.
-- **High-Performance Spatial Engine**: Scikit-Learn `BallTree` spatial indexing combined with DuckDB analytical queries delivering sub-30ms response times.
+| Pin | What it tells you |
+| --- | --- |
+| Green | A space is estimated to be **likely** at your arrival time (60% or higher). |
+| Amber-brown | A space is **possible** (30% to under 60%). |
+| Red | A space is **unlikely** (under 30%). |
 
----
+Blue marks reported off-hours. Gray means there isn't enough availability information. You can also explore mapped lots and garages. The availability estimates apply to street meters.
 
-## 🏗️ System Architecture
+To try the map and chat on your laptop, follow the [web app setup instructions](Frontend/README.md#run-locally). The web app lives in `Frontend/` and the parking data service lives in `HackForHumanity/`.
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                          Data Pipeline (Offline)                       │
-│                                                                        │
-│   data.sandiego.gov ──► Ingest ──► Clean ──► Sessionize ──► Occupancy  │
-│      (Raw CSVs)         (raw)    (parquet)  (parquet)     (parquet)    │
-│                                                               │        │
-│                                            Profiles Parquet ──┘        │
-│                                                   │                    │
-│                                                   ▼                    │
-│                                      Analytical DuckDB Store           │
-└───────────────────────────────────────────────────┬────────────────────┘
-                                                    │
-┌───────────────────────────────────────────────────▼────────────────────┐
-│                         FastAPI Backend                                │
-│                                                                        │
-│   GET  /v1/spots   ── Spatial BallTree + DuckDB query (Deterministic)  │
-│   POST /v1/chat    ── Gemini LLM w/ automated function calling         │
-│   GET  /v1/meters  ── Specific pole weekly availability trends         │
-└───────────────────────────────────▲────────────────────────────────────┘
-                                    │
-                                    │ REST API
-                                    │
-┌───────────────────────────────────▼────────────────────────────────────┐
-│                    ParkPilot Frontend (React + Vite)                   │
-│                                                                        │
-│   • Interactive Leaflet Map        • Color-coded availability bands    │
-│   • Natural Language Chat UI       • Distance & duration filters       │
-│   • Destination Discovery Proxy    • Responsive desktop & mobile view  │
-└────────────────────────────────────────────────────────────────────────┘
-```
+## Where the estimates come from
 
----
+The City of San Diego publishes parking meter locations and payment records. We use those records to estimate how busy each meter usually is on a given day of the week and time of day, giving more weight to recent weeks. For a Tuesday lunch search, what happened around lunchtime on previous Tuesdays is more useful than a citywide average.
 
-## 📁 Repository Structure
+A payment records how much time someone bought. A driver might leave early, and some parked cars never appear in the payment records. That's why even a green pin is an estimate. Check the posted signs when you arrive.
 
-The project is organized as a monorepo containing both the frontend application and backend service:
+## How we used GitHub Copilot
 
-```
-ParkPilot/
-├── Frontend/                 # React + Vite application
-│   ├── src/                  # React components (Map, Chat, Details)
-│   ├── server/               # Node discovery server for OSM places & lots
-│   ├── public/               # Static assets and icons
-│   ├── package.json          # Frontend dependencies & scripts
-│   └── vite.config.js        # Vite build configuration
-│
-├── HackForHumanity/          # Backend service & Data Pipeline
-│   ├── src/parking/          # Core Python package
-│   │   ├── api/              # FastAPI routes (spots, chat, metadata)
-│   │   ├── llm/              # Gemini agent, tools, and prompts
-│   │   ├── serve/            # DuckDB store & availability ranker
-│   │   ├── geo/              # Spatial indexing & geocoding
-│   │   └── transform/        # Data cleaning and occupancy modeling
-│   ├── data/serving/         # Pre-computed DuckDB database (34 MB)
-│   ├── scripts/              # Ingestion, backtesting, and build scripts
-│   ├── tests/                # Automated pytest suite
-│   ├── pyproject.toml        # Python project configuration
-│   └── Dockerfile            # Container definition for deployment
-│
-├── .gitignore                # Global git ignore configuration
-├── .gitattributes           # Git LFS & line ending normalizations
-└── README.md                 # Project overview and documentation
-```
+We used GitHub Copilot to help build the web app, including the code that connects a destination search to the map and parking list. We tested that interaction by dropping a pin, entering a different destination in chat, and checking that both the pin and the nearby parking options moved to the new location.
 
----
+## For developers
 
-## 🚀 Getting Started
+The backend runs on Python 3.11+ and FastAPI. The map and Gemini chat assistant use the same parking search. The [backend specification](HackForHumanity/backendspec.md) describes how we turn payment records into estimates and rank nearby meters.
 
-### Prerequisites
+<details>
+<summary>Run the backend locally</summary>
 
-- **Node.js**: `v22.12+` (or modern LTS)
-- **Python**: `3.11+`
-- **uv** (recommended) or `pip`
-- **Google Gemini API Key** (for conversational assistant features)
-
----
-
-### 1. Setting Up the Backend
-
-Navigate to the backend directory:
+Install Python 3.11+ and [uv](https://docs.astral.sh/uv/), then run these commands.
 
 ```bash
-cd HackForHumanity
-```
-
-Create a virtual environment and install dependencies:
-
-```bash
-# Using uv (fastest)
-uv sync
-
-# Or using standard pip
-python -m venv .venv
-source .venv/bin/activate   # On Windows: .venv\Scripts\activate
-pip install -e .
-```
-
-Configure environment variables:
-
-```bash
+git clone https://github.com/EduardoLougon/ParkPilot.git
+cd ParkPilot/HackForHumanity
+uv sync --extra dev
 cp .env.example .env
+uv run uvicorn src.parking.api.main:app --port 8000 --reload
 ```
 
-Edit `.env` and provide your Gemini API key:
-```ini
-GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_MODEL=gemini-2.5-flash
-CORS_ORIGINS=["http://localhost:5173", "http://127.0.0.1:5173"]
-```
+For chat, set `GEMINI_API_KEY` in `.env` before starting the server. Open the [interactive API docs](http://localhost:8000/docs) to try a request.
 
-Start the FastAPI development server:
+</details>
+
+<details>
+<summary>API, tests, and deployment</summary>
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /v1/spots` | Find nearby meters for a destination, arrival time, and length of stay. |
+| `GET /v1/meters/{pole_id}` | See a meter's details and weekly availability pattern. |
+| `POST /v1/chat` | Ask a parking question and receive a reply and map results. |
+| `GET /v1/meta` | Check how recent the data is. |
+| `GET /health` | Check whether the service is ready. |
 
 ```bash
-uvicorn parking.api.main:app --reload --port 8000
+uv run pytest tests/ -v                   # Run the tests
+uv run python scripts/benchmark_spots.py  # Measure search latency
+uv run python scripts/backtest.py         # Evaluate estimates on held-out weeks
+uv run python scripts/build_all.py        # Refresh the parking dataset
 ```
 
-The API documentation will be available at `http://localhost:8000/docs`.
+To deploy on Render, create a Blueprint using `HackForHumanity/render.yaml` and set the backend service root to `HackForHumanity` and set `GEMINI_API_KEY`. The [Render configuration](HackForHumanity/render.yaml) defines the Docker service and its health check.
 
----
-
-### 2. Setting Up the Frontend
-
-Open a new terminal and navigate to the frontend directory:
-
-```bash
-cd Frontend
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Configure environment variables (optional, defaults to local or hosted backend):
-
-```bash
-cp .env.example .env
-```
-
-Update `VITE_API_URL` to point to your backend:
-```ini
-VITE_API_URL=http://localhost:8000
-```
-
-Start the Vite development server:
-
-```bash
-npm run dev
-```
-
-Open the printed URL (typically `http://localhost:5173`) in your browser.
-
----
-
-## 📊 How Predictions Work
-
-1. **Transaction Ingestion**: City of San Diego metered transaction data records meter start time, payment duration, meter type, and location.
-2. **Session Reconstruction**: Continuous meter occupancy sessions are reconstructed and mapped across historical weeks.
-3. **Occupancy Profile Grid**: Occupancy is aggregated into 15-minute time slots across all days of the week, weighted with an exponential decay favoring recent weeks.
-4. **Bayesian/Empirical Availability Probability ($P_{\text{avail}}$)**:
-   - For an arrival time $t$, ParkPilot computes the historical probability that a given meter is unoccupied.
-   - Categorized into clear user bands:
-     - 🟢 **Likely** ($P \ge 60\%$)
-     - 🟡 **Possible** ($30\% \le P < 60\%$)
-     - 🔴 **Unlikely** ($P < 30\%$)
-     - ⚪ **Unmetered / Free** (Outside enforcement windows or on holidays)
-
----
-
-## 🛠️ API Quick Reference
-
-| Method | Route | Description |
-|---|---|---|
-| `GET` | `/health` | Service health status and database connection probe |
-| `GET` | `/v1/meta` | Dataset metadata, active meter counts, and bounding box |
-| `GET` | `/v1/spots` | Spatial query returning ranked parking spots near coordinates |
-| `GET` | `/v1/meters/{id}` | Detailed profile and weekly hourly pattern for a specific meter |
-| `POST` | `/v1/chat` | AI conversation endpoint with automatic tool calling |
-
----
-
-## ⚠️ Disclaimer
-
-ParkPilot provides statistical parking availability estimates derived from historical meter transactions. It does not use live physical space sensors or cameras. Actual street parking availability may vary due to special events, road work, street sweeping, or unmetered vehicle occupancy. Always verify posted city street signs and curb restrictions.
-
----
-
-## 👥 Authors & Acknowledgments
-
-- Built for **Hack for Humanity**.
-- Parking dataset provided by the **City of San Diego Open Data Portal** (`data.sandiego.gov`).
-- Maps and place search powered by **OpenStreetMap** and **Nominatim**.
+</details>
