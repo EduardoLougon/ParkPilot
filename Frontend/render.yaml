@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: parkingpilot-app1
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.16.0

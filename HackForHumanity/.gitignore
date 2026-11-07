@@ -1,0 +1,25 @@
+# Virtual environment
+.venv/
+
+# Environment variables
+.env
+
+# Data artifacts
+data/raw/
+data/clean/
+!data/serving/
+!data/serving/parking.duckdb
+reports/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+

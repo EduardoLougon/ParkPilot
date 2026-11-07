@@ -1,0 +1,27 @@
+{
+  "name": "parking-finder",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "start": "node server/start.mjs"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "mapbox-gl": "^3.34.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-map-gl": "^8.1.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "oxlint": "^1.90.0",
+    "vite": "^8.3.6"
+  }
+}
